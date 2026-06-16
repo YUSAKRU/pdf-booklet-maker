@@ -1,0 +1,24 @@
+# Environments
+.venv/
+venv/
+ENV/
+env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Local sessions and temp files
+.sessions/
+.pdf_booklet_sessions/
+output_demo/
+test_input.pdf
+
+# Git
+.git/
+.gitignore
+
+# IDE config
+.vscode/
+.idea/

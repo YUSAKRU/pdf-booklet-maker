@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>pdf-booklet-maker | Local-First Imposition Engine</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="/static/index.css">
+</head>
+<body>
+    <div class="glass-bg"></div>
+    
+    <!-- Language Selector -->
+    <div class="lang-selector">
+        <button type="button" class="lang-btn active" data-lang="en">EN</button>
+        <button type="button" class="lang-btn" data-lang="tr">TR</button>
+    </div>
+
+    <main class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo">
+                <span class="logo-icon">📖</span>
+                <h1>pdf-booklet-maker</h1>
+            </div>
+            <p class="tagline" data-i18n="tagline">Local-First, High-Performance PDF Imposition Engine</p>
+            <div class="privacy-badge">
+                <span class="badge-icon">🔒</span> <span data-i18n="privacy_badge">100% Offline & Private (Your files never leave your machine)</span>
+            </div>
+        </header>
+
+        <!-- Top Symmetrical Section (Uploader & Download Actions) -->
+        <div class="top-grid">
+            <!-- Left Side: Configurator & Uploader -->
+            <section class="card config-card">
+                <h2 data-i18n="section_config">1. Upload & Configure</h2>
+                
+                <!-- Drag & Drop Zone -->
+                <div class="drop-zone" id="dropZone">
+                    <input type="file" id="fileInput" accept=".pdf" class="file-input">
+                    <div class="drop-content">
+                        <span class="drop-icon">📤</span>
+                        <p class="drop-title" data-i18n="drop_title">Drag & drop your PDF here</p>
+                        <p class="drop-subtitle" data-i18n="drop_subtitle">or click to browse from files</p>
+                        <p class="drop-limit" data-i18n="drop_limit">Supports standard Portrait A4 PDFs</p>
+                    </div>
+                    <div class="file-details hidden" id="fileDetails">
+                        <span class="file-icon">📄</span>
+                        <div class="file-meta">
+                            <span class="file-name" id="fileName">document.pdf</span>
+                            <span class="file-size" id="fileSize">0 KB</span>
+                        </div>
+                        <button type="button" class="remove-file-btn" id="removeFileBtn">✕</button>
+                    </div>
+                </div>
+
+                <!-- Parameters Form -->
+                <form id="bookletForm" class="parameters-form">
+                    <!-- Gutter Slider -->
+                    <div class="form-group">
+                        <div class="form-label-row">
+                            <label for="gutterInput" data-i18n="label_gutter">Gutter Margin (Fold Space)</label>
+                            <span class="value-badge"><span id="gutterValue">0</span> pt</span>
+                        </div>
+                        <p class="field-desc" data-i18n="desc_gutter">The space left between the pages at the center fold spine.</p>
+                        <div class="slider-row">
+                            <input type="range" id="gutterInput" min="0" max="50" step="1" value="0" class="styled-slider">
+                        </div>
+                    </div>
+
+                    <!-- Creep Slider -->
+                    <div class="form-group">
+                        <div class="form-label-row">
+                            <label for="creepInput" data-i18n="label_creep">Creep Compensation</label>
+                            <span class="value-badge"><span id="creepValue">0.0</span> pt</span>
+                        </div>
+                        <p class="field-desc" data-i18n="desc_creep">Shifts inner pages inward to compensate for paper folding thickness.</p>
+                        <div class="slider-row">
+                            <input type="range" id="creepInput" min="0" max="5" step="0.1" value="0" class="styled-slider">
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button type="submit" class="submit-btn disabled" id="submitBtn" disabled>
+                        <span class="btn-text" data-i18n="btn_generate">Generate Booklet Sheets</span>
+                        <span class="spinner hidden" id="btnSpinner"></span>
+                    </button>
+                </form>
+            </section>
+
+            <!-- Right Side: Status & Downloads -->
+            <section class="card status-card">
+                <h2 data-i18n="section_results">2. Imposition Output</h2>
+                
+                <!-- Placeholder when no operation has run -->
+                <div class="placeholder-state" id="placeholderState">
+                    <div class="placeholder-icon">🖨️</div>
+                    <h3 data-i18n="placeholder_title">Waiting for Booklet Generation</h3>
+                    <p data-i18n="placeholder_text">Upload a PDF and customize folding options to preview the output sheets.</p>
+                </div>
+
+                <!-- Action Panel & Downloads (Success State) -->
+                <div class="success-actions hidden" id="successActions">
+                    <div class="success-header">
+                        <span class="success-icon">✨</span>
+                        <h3 data-i18n="success_title">Booklet Generated Successfully!</h3>
+                    </div>
+
+                    <!-- Imposition Metadata Table -->
+                    <div class="meta-table">
+                        <div class="meta-row">
+                            <span class="meta-label" data-i18n="meta_orig">Original Pages</span>
+                            <span class="meta-value" id="resOriginalPages">0</span>
+                        </div>
+                        <div class="meta-row" id="paddingRow">
+                            <span class="meta-label" data-i18n="meta_padded">Padded Blank Pages</span>
+                            <span class="meta-value warning" id="resPaddingApplied">0</span>
+                        </div>
+                        <div class="meta-row">
+                            <span class="meta-label" data-i18n="meta_sheets">Total Sheets (A4 Landscape)</span>
+                            <span class="meta-value" id="resSheetsCount">0</span>
+                        </div>
+                    </div>
+
+                    <!-- Download Buttons -->
+                    <div class="download-grid">
+                        <div class="download-row">
+                            <a href="#" class="download-btn btn-front" id="downloadFront" download>
+                                <span class="download-btn-icon">📄</span>
+                                <div class="download-btn-meta">
+                                    <span class="dl-title" data-i18n="dl_front_title">Download Front PDF</span>
+                                    <span class="dl-desc" data-i18n="dl_front_desc">For odd page printing</span>
+                                </div>
+                            </a>
+                            <a href="#" class="download-btn btn-back" id="downloadBack" download>
+                                <span class="download-btn-icon">📄</span>
+                                <div class="download-btn-meta">
+                                    <span class="dl-title" data-i18n="dl_back_title">Download Back PDF</span>
+                                    <span class="dl-desc" data-i18n="dl_back_desc">For even page printing</span>
+                                </div>
+                            </a>
+                        </div>
+                        <a href="#" class="download-btn btn-zip" id="downloadZip" download>
+                            <span class="download-btn-icon">📦</span>
+                            <div class="download-btn-meta">
+                                <span class="dl-title" data-i18n="dl_zip_title">Download All (ZIP)</span>
+                                <span class="dl-desc" data-i18n="dl_zip_desc">Contains both Front & Back</span>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Error State -->
+                <div class="error-state hidden" id="errorState">
+                    <span class="error-icon">⚠️</span>
+                    <h3 id="errorTitle">Anomali ve Risk Tespiti</h3>
+                    <p id="errorMessage">Detailed error logs go here.</p>
+                </div>
+            </section>
+        </div>
+
+        <!-- Full-Width Bottom Section: Landscape PDF Preview -->
+        <div class="preview-card-container hidden" id="previewCardContainer">
+            <section class="card preview-card">
+                <div class="preview-header">
+                    <span class="preview-title" data-i18n="preview_title">PDF Live Preview</span>
+                    <div class="preview-tabs">
+                        <button type="button" class="preview-tab active" id="previewFrontTab" data-i18n="preview_front_tab">Front (Odd Sheets)</button>
+                        <button type="button" class="preview-tab" id="previewBackTab" data-i18n="preview_back_tab">Back (Even Sheets)</button>
+                    </div>
+                </div>
+                <div class="preview-body">
+                    <iframe id="pdfPreviewIframe" class="preview-iframe" src="about:blank"></iframe>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Main JavaScript -->
+    <script src="/static/index.js"></script>
+</body>
+</html>

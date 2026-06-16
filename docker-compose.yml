@@ -1,0 +1,13 @@
+services:
+  web-ui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pdf-booklet-maker-web
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./.sessions:/app/.sessions
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
