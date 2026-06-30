@@ -1,10 +1,11 @@
 import os
+import re
 import sys
 import uuid
 import shutil
 import zipfile
 import logging
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException, status
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, status, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -14,6 +15,9 @@ from pdf_booklet.logger import get_logger
 
 logger = get_logger()
 app = FastAPI(title="pdf-booklet-maker API")
+
+MAX_UPLOAD_BYTES = 200 * 1024 * 1024  # 200 MB
+_UUID_RE = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$')
 
 # Resolve paths dynamically (compatible with PyInstaller bundle structures)
 IS_FROZEN = getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS')
@@ -48,6 +52,15 @@ async def process_pdf(
             detail="Uploaded file is not a PDF."
         )
 
+    # Enforce upload size limit
+    contents = await file.read()
+    if len(contents) > MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"File exceeds the maximum allowed size of {MAX_UPLOAD_BYTES // (1024*1024)} MB."
+        )
+    await file.seek(0)
+
     # Save uploaded file
     input_filename = "input.pdf"
     input_path = os.path.join(session_path, input_filename)
@@ -80,7 +93,7 @@ async def process_pdf(
         )
 
         # Create a ZIP containing both outputs
-        base_name = os.path.splitext(file.filename)[0]
+        base_name = os.path.basename(os.path.splitext(file.filename)[0]) or "output"
         zip_filename = f"{base_name}_booklet.zip"
         zip_path = os.path.join(session_path, zip_filename)
 
@@ -123,6 +136,11 @@ async def process_pdf(
 
 @app.get("/api/download/{session_id}/{file_type}")
 async def download_file(session_id: str, file_type: str, inline: bool = False):
+    if not _UUID_RE.match(session_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid session ID."
+        )
     session_path = os.path.join(SESSIONS_DIR, session_id)
     if not os.path.exists(session_path):
         raise HTTPException(

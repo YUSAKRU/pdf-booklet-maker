@@ -1,244 +1,305 @@
-# pdf-booklet-maker 🚀
+# pdf-booklet-maker
 
-🌐 **Language / Dil:**
+**Language / Dil:**
 - [English](#-english)
 - [Türkçe](#-türkçe)
 
 ---
 
 <a name="-english"></a>
-## 🇬🇧 English
+## English
 
-A high-performance, local-first command-line tool and local web application designed to convert standard Portrait A4 PDFs into booklet imposition sheets (separate front and back printable PDFs) for manual double-sided printing.
+A high-performance, local-first command-line tool and web application that converts standard Portrait A4 PDFs into booklet imposition sheets — separate front and back printable PDFs — for manual double-sided printing.
 
-This project is built purely using deterministic page imposition algorithms and high-performance libraries (PyMuPDF). It contains **no external AI dependencies or web service connections**, ensuring 100% privacy and security for corporate or sensitive documents.
-
----
-
-### ✨ Features
-
-- **Local-First & Offline:** Absolute privacy. Files never leave your local workspace.
-- **Dynamic Blank Page Padding:** Automatically pads files ($N \pmod 4 \neq 0$) to align pages to a multiple of 4 by injecting blank pages at the end of the document.
-- **Parametric Creep & Gutter Controls:** Precise physical formatting to account for fold offsets and binding spacing.
-- **Corrupted & DRM PDF Validation:** Scans for encryption, security constraints, and corrupted elements before processing.
-- **Structured JSON Logging:** Outputs standard logging outputs in JSON format to stdout for easy parsing and orchestration.
-- **Glassmorphic Local Web UI:** Modern, lightweight FastAPI Single Page Application (SPA) utilizing drag-and-drop actions, parameters configuration, real-time log streaming, and downloadable packages.
+Built entirely on deterministic page imposition algorithms and PyMuPDF. **No external AI dependencies, no network calls, no telemetry.** 100% private: your files never leave your machine.
 
 ---
 
-### 📂 Project Directory Structure
+### Features
+
+- **Local-First & Offline:** Files are processed entirely on your machine and never transmitted anywhere.
+- **Dynamic Blank Page Padding:** Automatically pads documents to a multiple of 4 pages by injecting blank pages at the end ($N \pmod 4 \neq 0$).
+- **Parametric Creep & Gutter Controls:** Fine-tune fold offset compensation and binding margin in points.
+- **Custom Output Page Size:** Override the default A4 Landscape output dimensions with `--width` / `--height`.
+- **Upload Size Limit:** Web UI enforces a 200 MB per-file limit to protect local resources.
+- **DRM & Corruption Validation:** Detects encryption, security restrictions, and corrupted content before processing starts.
+- **Structured JSON Logging:** All log output is JSON-formatted on stdout for easy parsing and pipeline integration.
+- **Local Web UI:** Modern FastAPI single-page application with drag-and-drop upload, real-time log streaming, parameter controls, and one-click ZIP download.
+
+---
+
+### Project Structure
 
 ```text
 pdf-booklet-maker/
 ├── pdf_booklet/                # Core Python package
-│   ├── engine.py               # Imposition mapping, padding & translation matrices
-│   ├── validator.py            # Pre-checks (DRM/encryption, corruption, page counts)
-│   ├── exceptions.py           # Structured package errors
-│   ├── logger.py               # JSON structured logging configuration
-│   ├── cli.py                  # CLI argument parsing
-│   └── web/                    # FastAPI local web server and assets
-│       └── static/             # Single Page Application (HTML/CSS/JS)
+│   ├── engine.py               # Imposition mapping, blank-page padding & transform matrices
+│   ├── validator.py            # Pre-flight checks (DRM/encryption, corruption, page count)
+│   ├── exceptions.py           # Typed package exceptions
+│   ├── logger.py               # JSON structured logging
+│   ├── cli.py                  # CLI argument parsing and dispatch
+│   └── web/
+│       ├── server.py           # FastAPI application, upload handling & session management
+│       └── static/             # Single-page application (HTML / CSS / JS)
 ├── tests/                      # Unit test suite
-├── Dockerfile                  # Container instructions
-├── docker-compose.yml          # Container configuration orchestrator
-├── .dockerignore               # Patterns to ignore during container builds
-├── requirements.txt            # Package dependencies
-├── make_booklet.py             # Main CLI executable
-├── run_web_ui.py               # Main Web UI launcher script
+├── Dockerfile                  # Container image definition
+├── docker-compose.yml          # Container orchestration
+├── .dockerignore               # Docker build exclusions
+├── requirements.txt            # Python dependencies
+├── make_booklet.py             # Main entry point (CLI and --web launcher)
+├── run_web_ui.py               # Alternative Web UI launcher script
 └── build_executable.py         # Automates PyInstaller compilation
 ```
 
 ---
 
-### 🚀 Quick Start
+### Quick Start
 
-#### 1. Installation
-Create and activate your virtual environment, then install dependencies:
+#### 1. Requirements
+
+- Python **3.8** or later
+- pip
+
+#### 2. Installation
+
 ```bash
-# Set up virtual environment
+# Create and activate a virtual environment
 python3 -m venv .venv
-source .venv/bin/activate  # Or .venv/bin/activate.fish if using fish shell
+source .venv/bin/activate        # bash / zsh
+# source .venv/bin/activate.fish  # fish shell
 
-# Install requirements
+# Install dependencies
 pip install -r requirements.txt
 ```
 
-#### 2. Running via Command Line
-Generate front/back PDFs directly from your terminal:
+#### 3. CLI Usage
+
 ```bash
-# Basic run (outputs [input]_front.pdf and [input]_back.pdf in same directory)
+# Basic: outputs input_front.pdf and input_back.pdf next to the input file
 python3 make_booklet.py input.pdf
 
-# Custom run with 10 pt gutter margin and 0.5 pt creep compensation
+# Custom output directory, 10 pt gutter, 0.5 pt creep compensation
 python3 make_booklet.py input.pdf --output-dir ./output --gutter 10 --creep 0.5
+
+# Custom output sheet size (e.g. US Letter landscape: 792 x 612 pt)
+python3 make_booklet.py input.pdf --width 792 --height 612
 ```
 
-#### 3. Running the Local Web UI
-You can start the local FastAPI web server to upload and process files in your browser:
+**All CLI options:**
+
+| Option | Default | Description |
+|---|---|---|
+| `input_file` | — | Path to the input Portrait PDF |
+| `-o`, `--output-dir` | Same as input | Directory for output files |
+| `-g`, `--gutter` | `0.0` | Base gutter margin between pages (points) |
+| `-c`, `--creep` | `0.0` | Creep compensation per sheet (points) |
+| `--width` | `842.0` | Output sheet width in points (A4 landscape default) |
+| `--height` | `595.0` | Output sheet height in points (A4 landscape default) |
+| `--web` | — | Launch the local Web UI server |
+| `-v`, `--verbose` | — | Enable DEBUG-level logging |
+
+#### 4. Web UI
+
 ```bash
-# Start server
 python3 make_booklet.py --web
-# (Alternatively, run: python3 run_web_ui.py)
+# Alternative: python3 run_web_ui.py
 ```
-Open your browser and navigate to:
-👉 **[http://127.0.0.1:8000](http://127.0.0.1:8000)**
+
+Open **[http://127.0.0.1:8000](http://127.0.0.1:8000)** in your browser.
+
+The server only binds to `127.0.0.1` — it is not exposed to the network.
 
 ---
 
-### 📦 Distribution & Packaging
+### Docker
 
-#### Containerization (Docker)
-Build and run the application as an isolated container service:
 ```bash
-# Start container
+# Build and start
 docker compose up --build -d
 
-# Stop container
+# Stop
 docker compose down
 ```
 
-#### Standalone Executable (PyInstaller)
-Compile the entire project into a single, dependency-free binary file (so you don't even need Python installed to run it):
+The container exposes port **8000** and mounts `.sessions/` as a volume for session persistence across restarts.
+
+---
+
+### Standalone Executable (PyInstaller)
+
+Compile everything into a single binary that requires no Python installation:
+
 ```bash
-# Build standalone binary
 python3 build_executable.py
 ```
-Your compiled binary will be placed at **`dist/pdf-booklet-maker`** (or `.exe` on Windows).
-Run it directly:
+
+The binary is placed at `dist/pdf-booklet-maker` (or `dist/pdf-booklet-maker.exe` on Windows).
+
 ```bash
-# Start Web UI
+# Web UI
 ./dist/pdf-booklet-maker --web
 
-# Process PDF via CLI
+# CLI
 ./dist/pdf-booklet-maker input.pdf --output-dir ./out
 ```
 
 ---
 
-### 🧪 Testing
+### Testing
 
-Execute the programmatically generated unit test suite:
 ```bash
 python3 -m unittest discover -s tests
 ```
-All tests automatically generate mock PDFs in temporary directories and perform assertions against them, leaving no clutter.
+
+Tests generate synthetic PDFs in temporary directories and clean up after themselves.
 
 ---
+
 ---
 
 <a name="-türkçe"></a>
-## 🇹🇷 Türkçe
+## Türkçe
 
-Manuel çift taraflı yazdırma için standart Dikey A4 PDF'leri kitapçık düzenine (ayrı ön ve arka yazdırılabilir PDF'ler) dönüştürmek amacıyla tasarlanmış, yüksek performanslı, yerel öncelikli (local-first) bir komut satırı aracı ve yerel web uygulamasıdır.
+Manuel çift taraflı yazdırma için standart Dikey A4 PDF'leri kitapçık düzenine — ayrı ön ve arka yazdırılabilir PDF'ler — dönüştüren yüksek performanslı, yerel öncelikli bir komut satırı aracı ve web uygulamasıdır.
 
-Bu proje tamamen deterministik sayfa düzeni (imposition) algoritmaları ve yüksek performanslı kütüphaneler (PyMuPDF) kullanılarak oluşturulmuştur. Kurumsal veya hassas belgeler için %100 gizlilik ve güvenlik sağlayacak şekilde **hiçbir harici yapay zeka bağımlılığı veya web servisi bağlantısı içermez**.
-
----
-
-### ✨ Özellikler
-
-- **Yerel Öncelikli ve Çevrimdışı (Offline):** Mutlak gizlilik. Dosyalarınız asla yerel çalışma alanınızdan dışarı çıkmaz.
-- **Dinamik Boş Sayfa Doldurma:** Belge sonuna boş sayfalar ekleyerek sayfa sayısını otomatik olarak 4'ün katına tamamlar ($N \pmod 4 \neq 0$).
-- **Parametrik Katlama Payı (Creep) ve Cilt Payı (Gutter) Kontrolleri:** Katlama kaymalarını ve cilt boşluklarını hesaba katmak için hassas fiziksel biçimlendirme.
-- **Bozuk ve DRM korumalı PDF Doğrulaması:** İşleme başlamadan önce şifreleme, güvenlik kısıtlamaları ve bozuk öğeleri tarar.
-- **Yapılandırılmış JSON Günlükleme (Logging):** Kolay ayrıştırma ve orkestrasyon için standart günlük çıktılarını JSON formatında stdout'a aktarır.
-- **Glassmorphic Yerel Web Arayüzü:** Sürükle-bırak işlemleri, parametre yapılandırmaları, gerçek zamanlı log akışı ve indirilebilir paketler sunan modern, hafif FastAPI Tek Sayfa Uygulaması (SPA).
+Tamamen deterministik sayfa düzeni algoritmaları ve PyMuPDF üzerine inşa edilmiştir. **Harici yapay zeka bağımlılığı, ağ çağrısı veya telemetri içermez.** %100 gizlilik: dosyalarınız asla makinenizden ayrılmaz.
 
 ---
 
-### 📂 Proje Dizin Yapısı
+### Özellikler
+
+- **Yerel Öncelikli ve Çevrimdışı:** Dosyalar tamamen yerel makinenizde işlenir, hiçbir yere aktarılmaz.
+- **Dinamik Boş Sayfa Doldurma:** Belge sonuna boş sayfa ekleyerek sayfa sayısını otomatik olarak 4'ün katına tamamlar ($N \pmod 4 \neq 0$).
+- **Parametrik Katlama Payı (Creep) ve Cilt Payı (Gutter):** Katlama kayması ve cilt boşluğunu nokta cinsinden ince ayarla.
+- **Özel Çıktı Sayfa Boyutu:** `--width` / `--height` ile varsayılan A4 Yatay boyutunu değiştir.
+- **Yükleme Boyutu Limiti:** Web arayüzü yerel kaynakları korumak için dosya başına 200 MB sınırı uygular.
+- **DRM ve Bozulma Doğrulaması:** İşleme başlamadan önce şifreleme, güvenlik kısıtlamaları ve bozuk içeriği tespit eder.
+- **Yapılandırılmış JSON Günlükleme:** Tüm log çıktısı kolay ayrıştırma ve pipeline entegrasyonu için stdout'a JSON formatında yazılır.
+- **Yerel Web Arayüzü:** Sürükle-bırak yükleme, gerçek zamanlı log akışı, parametre kontrolleri ve tek tıkla ZIP indirme sunan modern FastAPI tek sayfa uygulaması.
+
+---
+
+### Proje Yapısı
 
 ```text
 pdf-booklet-maker/
 ├── pdf_booklet/                # Çekirdek Python paketi
-│   ├── engine.py               # Kitapçık düzeni eşleme, boş sayfa ekleme ve dönüştürme matrisleri
-│   ├── validator.py            # Ön kontroller (DRM/şifreleme, bozulma, sayfa sayıları)
-│   ├── exceptions.py           # Yapılandırılmış paket hataları
-│   ├── logger.py               # JSON yapılandırılmış log yapılandırması
-│   ├── cli.py                  # CLI argüman ayrıştırma
-│   └── web/                    # FastAPI yerel web sunucusu ve statik dosyalar
-│       └── static/             # Tek Sayfa Uygulaması (HTML/CSS/JS)
-├── tests/                      # Birim test suiti
-├── Dockerfile                  # Konteyner talimatları
-├── docker-compose.yml          # Konteyner yapılandırma orkestratörü
-├── .dockerignore               # Konteyner derlemeleri sırasında yok sayılacak kalıplar
-├── requirements.txt            # Paket bağımlılıkları
-├── make_booklet.py             # Ana CLI çalıştırılabilir dosyası
-├── run_web_ui.py               # Ana Web UI başlatıcı betiği
+│   ├── engine.py               # Kitapçık düzeni eşleme, boş sayfa ekleme ve dönüşüm matrisleri
+│   ├── validator.py            # Ön kontroller (DRM/şifreleme, bozulma, sayfa sayısı)
+│   ├── exceptions.py           # Tipli paket hataları
+│   ├── logger.py               # JSON yapılandırılmış loglama
+│   ├── cli.py                  # CLI argüman ayrıştırma ve yönlendirme
+│   └── web/
+│       ├── server.py           # FastAPI uygulaması, yükleme yönetimi ve oturum yönetimi
+│       └── static/             # Tek sayfa uygulaması (HTML / CSS / JS)
+├── tests/                      # Birim test paketi
+├── Dockerfile                  # Konteyner imaj tanımı
+├── docker-compose.yml          # Konteyner orkestrasyonu
+├── .dockerignore               # Docker derleme dışlamaları
+├── requirements.txt            # Python bağımlılıkları
+├── make_booklet.py             # Ana giriş noktası (CLI ve --web başlatıcı)
+├── run_web_ui.py               # Alternatif Web UI başlatıcı betiği
 └── build_executable.py         # PyInstaller derlemesini otomatikleştiren betik
 ```
 
 ---
 
-### 🚀 Hızlı Başlangıç
+### Hızlı Başlangıç
 
-#### 1. Kurulum
-Sanal ortamınızı oluşturun, aktifleştirin ve bağımlılıkları yükleyin:
+#### 1. Gereksinimler
+
+- Python **3.8** veya üzeri
+- pip
+
+#### 2. Kurulum
+
 ```bash
-# Sanal ortamı kurun
+# Sanal ortam oluştur ve aktifleştir
 python3 -m venv .venv
-source .venv/bin/activate  # Veya fish kabuğu kullanıyorsanız .venv/bin/activate.fish
+source .venv/bin/activate        # bash / zsh
+# source .venv/bin/activate.fish  # fish kabuğu
 
-# Gereksinimleri yükleyin
+# Bağımlılıkları yükle
 pip install -r requirements.txt
 ```
 
-#### 2. Komut Satırından Çalıştırma
-Doğrudan terminalinizden ön/arka PDF'leri oluşturun:
+#### 3. Komut Satırı Kullanımı
+
 ```bash
-# Temel çalıştırma (aynı dizinde [girdi]_front.pdf ve [girdi]_back.pdf çıktılarını üretir)
+# Temel: girdi dosyasının yanına input_front.pdf ve input_back.pdf üretir
 python3 make_booklet.py girdi.pdf
 
-# 10 pt cilt payı ve 0.5 pt katlama payı telafisi ile özel çalıştırma
+# Özel çıktı dizini, 10 pt cilt payı, 0.5 pt katlama payı telafisi
 python3 make_booklet.py girdi.pdf --output-dir ./output --gutter 10 --creep 0.5
+
+# Özel çıktı boyutu (örn. US Letter Yatay: 792 x 612 pt)
+python3 make_booklet.py girdi.pdf --width 792 --height 612
 ```
 
-#### 3. Yerel Web Arayüzünü Çalıştırma
-Tarayıcınızda dosyaları yüklemek ve işlemek için yerel FastAPI web sunucusunu başlatabilirsiniz:
+**Tüm CLI seçenekleri:**
+
+| Seçenek | Varsayılan | Açıklama |
+|---|---|---|
+| `input_file` | — | Girdi Dikey PDF dosyasının yolu |
+| `-o`, `--output-dir` | Girdiyle aynı dizin | Çıktı dosyaları için dizin |
+| `-g`, `--gutter` | `0.0` | Sayfalar arası temel cilt payı (nokta) |
+| `-c`, `--creep` | `0.0` | Sayfa başına katlama payı telafisi (nokta) |
+| `--width` | `842.0` | Çıktı yaprağı genişliği (nokta, A4 Yatay varsayılan) |
+| `--height` | `595.0` | Çıktı yaprağı yüksekliği (nokta, A4 Yatay varsayılan) |
+| `--web` | — | Yerel Web UI sunucusunu başlat |
+| `-v`, `--verbose` | — | DEBUG seviyesi loglamayı etkinleştir |
+
+#### 4. Web Arayüzü
+
 ```bash
-# Sunucuyu başlatın
 python3 make_booklet.py --web
-# (Alternatif olarak: python3 run_web_ui.py)
+# Alternatif: python3 run_web_ui.py
 ```
-Tarayıcınızı açın ve şu adrese gidin:
-👉 **[http://127.0.0.1:8000](http://127.0.0.1:8000)**
+
+Tarayıcınızda **[http://127.0.0.1:8000](http://127.0.0.1:8000)** adresini açın.
+
+Sunucu yalnızca `127.0.0.1`'e bağlanır — ağa açık değildir.
 
 ---
 
-### 📦 Dağıtım ve Paketleme
+### Docker
 
-#### Konteynerleştirme (Docker)
-Uygulamayı izole edilmiş bir konteyner servisi olarak derleyin ve çalıştırın:
 ```bash
-# Konteyneri başlatın
+# Derle ve başlat
 docker compose up --build -d
 
-# Konteyneri durdurun
+# Durdur
 docker compose down
 ```
 
-#### Taşınabilir Çalıştırılabilir Dosya (PyInstaller)
-Tüm projeyi, Python yüklü olmasa bile çalıştırabileceğiniz tek bir bağımsız ikili (binary) dosya halinde derleyin:
+Konteyner **8000** portunu açığa çıkarır ve yeniden başlatmalar arasında oturum kalıcılığı için `.sessions/` dizinini volume olarak bağlar.
+
+---
+
+### Taşınabilir Çalıştırılabilir Dosya (PyInstaller)
+
+Python kurulumu gerektirmeyen tek bir binary'e derle:
+
 ```bash
-# Bağımsız ikiliyi derleyin
 python3 build_executable.py
 ```
-Derlenen dosyanız **`dist/pdf-booklet-maker`** (Windows'ta `.exe`) konumuna yerleştirilecektir.
-Doğrudan çalıştırın:
+
+Binary `dist/pdf-booklet-maker` konumuna yerleştirilir (Windows'ta `dist/pdf-booklet-maker.exe`).
+
 ```bash
-# Web Arayüzünü Başlatın
+# Web UI
 ./dist/pdf-booklet-maker --web
 
-# CLI aracılığıyla PDF İşleyin
+# CLI
 ./dist/pdf-booklet-maker girdi.pdf --output-dir ./out
 ```
 
 ---
 
-### 🧪 Test Etme
+### Test Etme
 
-Programlı olarak oluşturulan birim test paketini çalıştırın:
 ```bash
 python3 -m unittest discover -s tests
 ```
-Tüm testler geçici dizinlerde otomatik olarak sahte PDF'ler oluşturur ve bunlara göre doğrulamalar yapar, arkasında çöp bırakmaz.
+
+Testler geçici dizinlerde yapay PDF'ler oluşturur ve tamamlandığında temizler.
